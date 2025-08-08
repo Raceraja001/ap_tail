@@ -2,9 +2,9 @@ import { lazy } from 'react';
 import { Routes, Route } from 'react-router';
 import { ProtectedRoute } from './ProtectedRoute';
 import { Permission } from '../auth/types';
+import { AppLayout } from '../../components/layout/AppLayout';
 
 // Lazy load components for code splitting
-const AppLayout = lazy(() => import('../../layout/AppLayout'));
 const Home = lazy(() => import('../../pages/Dashboard/Home'));
 const SignIn = lazy(() => import('../../pages/AuthPages/SignIn'));
 const SignUp = lazy(() => import('../../pages/AuthPages/SignUp'));
@@ -14,6 +14,15 @@ const NotFound = lazy(() => import('../../pages/OtherPage/NotFound'));
 const UserProfiles = lazy(() => import('../../pages/UserProfiles'));
 const Calendar = lazy(() => import('../../pages/Calendar'));
 const Blank = lazy(() => import('../../pages/Blank'));
+
+// Project Management
+const ProjectDashboard = lazy(() => import('../../pages/ProjectManagement/Dashboard'));
+const ProjectList = lazy(() => import('../../pages/ProjectManagement/ProjectList'));
+const ProjectDetail = lazy(() => import('../../pages/ProjectManagement/ProjectDetail'));
+const TaskBoard = lazy(() => import('../../pages/ProjectManagement/TaskBoard'));
+const TeamManagement = lazy(() => import('../../pages/ProjectManagement/TeamManagement'));
+const TimeTracking = lazy(() => import('../../pages/ProjectManagement/TimeTracking'));
+const Reports = lazy(() => import('../../pages/ProjectManagement/Reports'));
 
 // Forms
 const FormElements = lazy(() => import('../../pages/Forms/FormElements'));
@@ -57,6 +66,29 @@ export const AppRoutes: React.FC = () => {
       >
         {/* Dashboard */}
         <Route index element={<Home />} />
+
+        {/* Project Management */}
+        <Route path="projects" element={<ProjectDashboard />} />
+        <Route path="projects/list" element={<ProjectList />} />
+        <Route path="projects/:id" element={<ProjectDetail />} />
+        <Route path="projects/:id/tasks" element={<TaskBoard />} />
+        <Route
+          path="teams"
+          element={
+            <ProtectedRoute requiredPermissions={[Permission.READ_USERS]}>
+              <TeamManagement />
+            </ProtectedRoute>
+          }
+        />
+        <Route path="time-tracking" element={<TimeTracking />} />
+        <Route
+          path="reports"
+          element={
+            <ProtectedRoute requiredPermissions={[Permission.READ_ANALYTICS]}>
+              <Reports />
+            </ProtectedRoute>
+          }
+        />
 
         {/* Profile and Calendar - Basic user access */}
         <Route path="profile" element={<UserProfiles />} />

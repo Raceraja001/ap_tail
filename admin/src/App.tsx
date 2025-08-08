@@ -6,6 +6,7 @@ import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 // Core Providers
 import { AuthProvider } from "./core/auth/AuthProvider";
 import { NotificationProvider } from "./core/notifications/NotificationProvider";
+import { PerformanceProvider } from "./core/performance/PerformanceProvider";
 import { ErrorBoundary } from "./core/error/ErrorBoundary";
 
 // Components
@@ -50,17 +51,19 @@ export default function App() {
   return (
     <ErrorBoundary>
       <QueryClientProvider client={queryClient}>
-        <Router>
-          <AuthProvider>
-            <NotificationProvider>
-              <ScrollToTop />
-              <Suspense fallback={<GlobalLoadingSpinner />}>
-                <AppRoutes />
-              </Suspense>
-              <ReactQueryDevtools initialIsOpen={false} />
-            </NotificationProvider>
-          </AuthProvider>
-        </Router>
+        <PerformanceProvider>
+          <Router>
+            <AuthProvider>
+              <NotificationProvider>
+                <ScrollToTop />
+                <Suspense fallback={<GlobalLoadingSpinner />}>
+                  <AppRoutes />
+                </Suspense>
+                <ReactQueryDevtools initialIsOpen={false} />
+              </NotificationProvider>
+            </AuthProvider>
+          </Router>
+        </PerformanceProvider>
       </QueryClientProvider>
     </ErrorBoundary>
   );

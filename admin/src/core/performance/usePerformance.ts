@@ -1,19 +1,12 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
+import { PerformanceMetrics, usePerformanceContext } from './PerformanceProvider';
 
 /**
  * Performance Monitoring Hook
- * 
+ *
  * Implements Single Responsibility Principle by focusing on performance tracking.
  * Provides metrics for component render times, memory usage, and user interactions.
  */
-
-export interface PerformanceMetrics {
-  renderTime: number;
-  memoryUsage?: MemoryInfo;
-  componentName: string;
-  timestamp: number;
-  props?: Record<string, any>;
-}
 
 export interface UsePerformanceOptions {
   componentName: string;
@@ -35,33 +28,38 @@ export const usePerformance = (options: UsePerformanceOptions) => {
   const renderStartTime = useRef<number>(0);
   const [metrics, setMetrics] = useState<PerformanceMetrics | null>(null);
   const isEnabled = import.meta.env.DEV || enableInProduction;
+  const hasInitialized = useRef<boolean>(false);
 
-  // Start timing on component mount and re-renders
+  // Initialize performance tracking once
   useEffect(() => {
-    if (!isEnabled) return;
-    
+    if (!isEnabled || hasInitialized.current) return;
+
+    hasInitialized.current = true;
     renderStartTime.current = performance.now();
-  });
 
-  // Measure render time after DOM updates
-  useEffect(() => {
-    if (!isEnabled) return;
+    // Measure performance after a delay to avoid infinite loops
+    const timeoutId = setTimeout(() => {
+      const renderTime = performance.now() - renderStartTime.current;
 
-    const renderTime = performance.now() - renderStartTime.current;
-    
-    const newMetrics: PerformanceMetrics = {
-      renderTime,
-      componentName,
-      timestamp: Date.now(),
+      const newMetrics: PerformanceMetrics = {
+        renderTime,
+        componentName,
+        timestamp: Date.now(),
+      };
+
+      if (trackMemory && 'memory' in performance) {
+        newMetrics.memoryUsage = (performance as any).memory;
+      }
+
+      setMetrics(newMetrics);
+      onMetricsCollected?.(newMetrics);
+    }, 100); // Small delay to ensure DOM is updated
+
+    return () => {
+      clearTimeout(timeoutId);
+      hasInitialized.current = false;
     };
-
-    if (trackMemory && 'memory' in performance) {
-      newMetrics.memoryUsage = (performance as any).memory;
-    }
-
-    setMetrics(newMetrics);
-    onMetricsCollected?.(newMetrics);
-  });
+  }, [componentName, isEnabled]); // Only run when component name or enabled state changes
 
   const measureFunction = useCallback(
     <T extends (...args: any[]) => any>(fn: T, functionName: string): T => {
@@ -215,60 +213,4 @@ export const useMemoryUsage = () => {
   return memoryInfo;
 };
 
-/**
- * Performance Context for Global Metrics
- */
-import { createContext, useContext, ReactNode } from 'react';
 
-interface PerformanceContextValue {
-  metrics: PerformanceMetrics[];
-  addMetric: (metric: PerformanceMetrics) => void;
-  clearMetrics: () => void;
-  getAverageRenderTime: (componentName?: string) => number;
-}
-
-const PerformanceContext = createContext<PerformanceContextValue | undefined>(undefined);
-
-export const PerformanceProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const [metrics, setMetrics] = useState<PerformanceMetrics[]>([]);
-
-  const addMetric = useCallback((metric: PerformanceMetrics) => {
-    setMetrics(prev => [...prev.slice(-99), metric]); // Keep last 100 metrics
-  }, []);
-
-  const clearMetrics = useCallback(() => {
-    setMetrics([]);
-  }, []);
-
-  const getAverageRenderTime = useCallback((componentName?: string) => {
-    const filteredMetrics = componentName 
-      ? metrics.filter(m => m.componentName === componentName)
-      : metrics;
-    
-    if (filteredMetrics.length === 0) return 0;
-    
-    const totalTime = filteredMetrics.reduce((sum, m) => sum + m.renderTime, 0);
-    return totalTime / filteredMetrics.length;
-  }, [metrics]);
-
-  const value: PerformanceContextValue = {
-    metrics,
-    addMetric,
-    clearMetrics,
-    getAverageRenderTime,
-  };
-
-  return (
-    <PerformanceContext.Provider value={value}>
-      {children}
-    </PerformanceContext.Provider>
-  );
-};
-
-export const usePerformanceContext = () => {
-  const context = useContext(PerformanceContext);
-  if (!context) {
-    throw new Error('usePerformanceContext must be used within PerformanceProvider');
-  }
-  return context;
-};
